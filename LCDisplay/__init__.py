@@ -104,6 +104,8 @@ class LCDisplay(CBPiExtension):
                 await self.show_fermenters(fermenters, counter, refresh)
                 counter +=1
             else:
+#                logging.info(activity)
+#                logging.info(name)
                 await self.show_activity(activity, name)
         pass
 
@@ -166,20 +168,37 @@ class LCDisplay(CBPiExtension):
         lines = ["","","",""]
         lcd_unit = self.cbpi.config.get("TEMP_UNIT", "C")
         active_step_props=activity['props']
-        target_temp = active_step_props['Temp']
-        if target_temp == "":
+        try:
+            target_temp = active_step_props['Temp']
+        except:
             target_temp = 0
-        kettle_ID = active_step_props['Kettle']
-        sensor_ID = active_step_props['Sensor']
-        kettle = self.cbpi.kettle.find_by_id(kettle_ID)
-        heater = self.cbpi.actor.find_by_id(kettle.heater)
-        heater_state = heater.instance.state
+        try:
+            kettle_ID = active_step_props['Kettle']
+        except:
+            kettle_ID = None
+        try:
+            sensor_ID = active_step_props['Sensor']
+        except:
+            sensor_ID = None
+        try:
+            kettle = self.cbpi.kettle.find_by_id(kettle_ID)
+            heater = self.cbpi.actor.find_by_id(kettle.heater)
+            heater_state = heater.instance.state
+        except:
+            kettle = None
+            heater = None
+            heater_state = False
+
         step_state = str(activity['state_text'])
         try:
             sensor_value = self.cbpi.sensor.get_sensor_value(sensor_ID).get('value')
         except:
             sensor_value = 0
-        kettle_name = str(kettle.name)
+        if kettle is not None:
+            kettle_name = str(kettle.name)
+        else:
+            kettle_name = "N/A"
+
         step_name = str(activity['name'])
         boil_check = step_name.lower()
         if boil_check.find("boil") != -1: # Boil Step
@@ -210,6 +229,7 @@ class LCDisplay(CBPiExtension):
                     "LCDDisplay  - single mode current sensor_value exception %s" % sensor_value)
                 lines[3] = ("Curr. Temp: %s" % "No Data")[:20]
         status = 1 if heater_state == True else 0
+#        logging.info(lines)
         await self.write_lines(lines,status)
         await asyncio.sleep(1)
 
