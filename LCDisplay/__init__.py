@@ -111,12 +111,17 @@ class LCDisplay(CBPiExtension):
 
     async def get_activity(self):
         active_step = None
+        name = ""
         data=self.controller.get_state()
-        name = data['basic']['name']
-        steps=data['steps']
-        for step in steps:
-            if step['status'] == "A":
-                active_step=step
+        try:
+            name = data['basic']['name']
+            steps=data['steps']
+            for step in steps:
+                if step['status'] == "A":
+                    active_step=step
+        except:
+           pass 
+
         return active_step,name
         await asyncio.sleep(1)
 
@@ -133,6 +138,7 @@ class LCDisplay(CBPiExtension):
         lcd.write_string(("IP: %s" % ip).ljust(20))
         lcd.cursor_pos = (3, 0)
         lcd.write_string((strftime("%Y-%m-%d %H:%M:%S", time.localtime())).ljust(20))
+#        logging.info("Show Standby")
         await asyncio.sleep(1)
 
     async def show_fermenters(self,fermenters, index, refresh):
@@ -160,6 +166,7 @@ class LCDisplay(CBPiExtension):
             lines[3]=("Spindle: Waiting").ljust(20)[:20]
 #        logging.info(lines)
         await self.write_lines(lines, status)
+#        logging.info("Show Fermenter Activity")
         await asyncio.sleep(refresh) 
 
         
@@ -231,6 +238,7 @@ class LCDisplay(CBPiExtension):
         status = 1 if heater_state == True else 0
 #        logging.info(lines)
         await self.write_lines(lines,status)
+#        logging.info("Show Brewing Activity")
         await asyncio.sleep(1)
 
     async def write_lines(self,lines,status=0):
@@ -413,10 +421,15 @@ class LCDisplay(CBPiExtension):
         return kettle_id
 
     async def get_active_fermenter(self):
-        self.kettle = self.kettle_controller.get_state()
         fermenters = []
-        for id in self.kettle['data']:
-            if (id['type']) == "Fermenter Hysteresis":
+        try:
+            self.kettle = self.kettle_controller.get_state()
+        except:
+            self.kettle = None
+        if self.kettle is not None:
+            for id in self.kettle['data']:
+#                logging.info(id)
+                if (id['type']) == "Fermenter Hysteresis":
                     status = 0
                     fermenter_id=(id['id'])
                     self.fermenter=self.cbpi.kettle.find_by_id(fermenter_id)
@@ -440,7 +453,6 @@ class LCDisplay(CBPiExtension):
                         status = 1
                     elif cooler_state == True:
                         status = 2
-
                     name = id['name']
                     target_temp = id['target_temp']
                     sensor = id['sensor']
@@ -463,12 +475,13 @@ class LCDisplay(CBPiExtension):
                             sensor2_units = sensor2_props.props['Units']
                         else:
                             sensor2_value = None
+                            sensor2_units = None
                     except:
                         sensor2_value = None
+                        sensor2_units = ""
                     if state != False:
                         fermenter_string={'name': name, 'BrewName':BrewName, 'target_temp': target_temp, 'sensor_value': sensor_value, 'sensor2': sensor2, 'sensor2_value': sensor2_value, "status": status, "sensor2_units": sensor2_units}
                         fermenters.append(fermenter_string)
-
         return fermenters
 
 
