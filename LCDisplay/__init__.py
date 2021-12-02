@@ -315,13 +315,13 @@ class LCDisplay(CBPiExtension):
 
     async def set_lcd_address(self):
         # global lcd_address
-        lcd_address = self.cbpi.config.get("LCD_address", None)
+        lcd_address = self.cbpi.config.get("LCD_Address", None)
         if lcd_address is None:
             logger.info("LCD_Address added")
             try:
-                await self.cbpi.config.add("LCD_address", '0x27', ConfigType.STRING,
-                                           "LCD address like 0x27 or 0x3f, CBPi reboot required")
-                lcd_address = self.cbpi.config.get("LCD_address", None)
+                await self.cbpi.config.add("LCD_Address", '0x27', ConfigType.STRING,
+                                           "LCD Address like 0x27 or 0x3f, CBPi reboot required")
+                lcd_address = self.cbpi.config.get("LCD_Address", None)
             except Exception as e:
                 logger.warning('Unable to update config')
                 logger.warning(e)

@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 # read the contents of your README file
 from os import path
@@ -8,17 +8,18 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(name='LCDisplay',
       version='0.0.1',
-      description='CraftBeerPi4 LCD Plugin',
-      author='Jan Battermann',
-      author_email='jan.battermann@t-online.de',
-      url='https://github.com/JamFfm/cbpi4-LCDisplay',
+      description='CraftBeerPi4 LCD Plugin Mod',
+      author='Alexander Vollkopf',
+      author_email='avollkopf@web.de',
+      url='https://github.com/avollkopf/cbpi4-LCDisplay',
       license='GPLv3',
+      packages=find_packages(),
       include_package_data=True,
       package_data={
         # If any package contains *.txt or *.rst files, include them:
       '': ['*.txt', '*.rst', '*.yaml'],
       'LCDisplay': ['*','*.txt', '*.rst', '*.yaml']},
-      packages=['LCDisplay'],
+      #packages=['LCDisplay'],
 	    install_requires=[
             'cbpi>=4.0.0.33',
       ],
