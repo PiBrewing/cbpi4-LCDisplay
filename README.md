@@ -1,2 +1,3 @@
 # craftbeerpi4-plugin-template
-this is alpha stuff and not ment to use in production
+
+This is a mod of Jan Battermans LCD Display plugin for CraftbeerrPi 4

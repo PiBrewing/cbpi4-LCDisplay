@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 # read the contents of your README file
 from os import path
@@ -7,7 +7,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='LCDisplay',
-      version='0.0.1',
+      version='0.0.2',
       description='CraftBeerPi4 LCD Plugin Mod',
       author='Alexander Vollkopf',
       author_email='avollkopf@web.de',
@@ -26,3 +26,4 @@ setup(name='LCDisplay',
       long_description=long_description,
       long_description_content_type='text/markdown'
      )
+

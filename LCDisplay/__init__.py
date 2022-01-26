@@ -14,7 +14,7 @@ from cbpi.api import *
 from cbpi.api.config import ConfigType
 from cbpi.controller.step_controller import StepController
 from cbpi.api.dataclasses import Props, Step
-from cbpi.api.dataclasses import Kettle, Props
+from cbpi.api.dataclasses import Fermenter, Kettle, Props
 from cbpi.api.base import CBPiBase
 from aiohttp import web
 
@@ -64,6 +64,8 @@ class LCDisplay(CBPiExtension):
         self.cbpi = cbpi
         self.controller : StepController = cbpi.step
         self.kettle_controller : KettleController = cbpi.kettle
+        self.fermenter_controller : FermentationController = cbpi.fermenter
+
         self._task = asyncio.create_task(self.run())
 
     async def run(self):
@@ -107,6 +109,7 @@ class LCDisplay(CBPiExtension):
 #                logging.info(activity)
 #                logging.info(name)
                 await self.show_activity(activity, name)
+#            await asyncio.sleep(refresh)
         pass
 
     async def get_activity(self):
@@ -315,13 +318,13 @@ class LCDisplay(CBPiExtension):
 
     async def set_lcd_address(self):
         # global lcd_address
-        lcd_address = self.cbpi.config.get("LCD_Address", None)
+        lcd_address = self.cbpi.config.get("LCD_address", None)
         if lcd_address is None:
             logger.info("LCD_Address added")
             try:
-                await self.cbpi.config.add("LCD_Address", '0x27', ConfigType.STRING,
-                                           "LCD Address like 0x27 or 0x3f, CBPi reboot required")
-                lcd_address = self.cbpi.config.get("LCD_Address", None)
+                await self.cbpi.config.add("LCD_address", '0x27', ConfigType.STRING,
+                                           "LCD address like 0x27 or 0x3f, CBPi reboot required")
+                lcd_address = self.cbpi.config.get("LCD_address", None)
             except Exception as e:
                 logger.warning('Unable to update config')
                 logger.warning(e)
@@ -423,23 +426,25 @@ class LCDisplay(CBPiExtension):
     async def get_active_fermenter(self):
         fermenters = []
         try:
-            self.kettle = self.kettle_controller.get_state()
+            self.fermenter = self.fermenter_controller.get_state()
+#            logging.info(self.fermenter)
         except:
-            self.kettle = None
-        if self.kettle is not None:
-            for id in self.kettle['data']:
-#                logging.info(id)
-                if (id['type']) == "Fermenter Hysteresis":
+            self.fermenter = None
+        if self.fermenter is not None:
+            for id in self.fermenter['data']:
+#                    logging.info(id)
+#                if (id['type']) == "Fermenter Hysteresis":
                     status = 0
                     fermenter_id=(id['id'])
-                    self.fermenter=self.cbpi.kettle.find_by_id(fermenter_id)
+#                    logging.info(fermenter_id)
+                    self.fermenter=self.cbpi.fermenter._find_by_id(fermenter_id)
                     heater = self.cbpi.actor.find_by_id(self.fermenter.heater)
                     try:
                         heater_state = heater.instance.state
                     except:
                         heater_state= False
 
-                    cooler = self.cbpi.actor.find_by_id(self.fermenter.agitator)
+                    cooler = self.cbpi.actor.find_by_id(self.fermenter.cooler)
                     try:
                         cooler_state = cooler.instance.state
                     except:
@@ -457,9 +462,9 @@ class LCDisplay(CBPiExtension):
                     target_temp = id['target_temp']
                     sensor = id['sensor']
                     try:
-                        BrewName = id['props']['BrewName']
+                        BrewName = id['brewname']
                     except:
-                        BrewName = None
+                        BrewName = "" 
                     try:
                         sensor_value = self.cbpi.sensor.get_sensor_value(sensor).get('value')
                     except:
@@ -482,6 +487,7 @@ class LCDisplay(CBPiExtension):
                     if state != False:
                         fermenter_string={'name': name, 'BrewName':BrewName, 'target_temp': target_temp, 'sensor_value': sensor_value, 'sensor2': sensor2, 'sensor2_value': sensor2_value, "status": status, "sensor2_units": sensor2_units}
                         fermenters.append(fermenter_string)
+#        logging.info(fermenters)
         return fermenters
 
 
