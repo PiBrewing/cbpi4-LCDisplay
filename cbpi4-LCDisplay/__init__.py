@@ -1,26 +1,29 @@
 # -*- coding: utf-8 -*-
 import time
+from time import gmtime, strftime
+from datetime import datetime
 import socket
 import fcntl
 import struct
 import logging
 import asyncio
-from RPLCD.i2c import CharLCD
+import json
+from .RPLCD.i2c import CharLCD
 from time import strftime
 from cbpi.api import *
 from cbpi.api.config import ConfigType
-# from cbpi.api.dataclasses import NotificationAction, NotificationType
+from cbpi.controller.step_controller import StepController
+from cbpi.api.dataclasses import Props, Step
+from cbpi.api.dataclasses import Fermenter, Kettle, Props
+from cbpi.api.step import StepState
+from cbpi.api.base import CBPiBase
+from aiohttp import web
 
-# from cbpi.api.dataclasses import NotificationType  # INFO, WARNING, ERROR, SUCCESS #  TODO
-# import cbpi.api.dataclasses as dataclasses  # includes NotificationType like INFO, WARNING, ERROR, SUCCESS #  todo
-
-# LCDisplay VERSION = '5.0.9'
+# LCDVERSION = '5.0.01'
 #
 # this plug in is made for CBPI4. Do not use it in CBPI3.
-# The LCD-library and LCD-driver are taken from RPLCD Project version 1.3.0. The documentation:
+# The LCD-library and LCD-driver are taken from RPLCD Project version 1.0. The documentation:
 # http://rplcd.readthedocs.io/en/stable/ very good and readable. Git is here: https://github.com/dbrgn/RPLCD.
-# The package should be installed automatically. If not install it manually: sudo pip3 install RPLCD
-#
 # LCD_Address should be something like 0x27, 0x3f etc.
 # See in Craftbeerpi-UI (webpage of CBPI4) settings .
 # To determine address of LCD use command prompt in Raspi and type in:
@@ -28,27 +31,10 @@ from cbpi.api.config import ConfigType
 #
 # Assembled by JamFfm
 # 02.04.2021
-# 18.04.2021 progress, thanks to avollkopf
-# 28.04.2021 little progress, heater state can be detected, apparently cbpicodec is not necessary to convert umlaute.
-# I leave it because I would like to handle the A00 parameter as I am not sure if all versions of LCD can use umlaute.
-# 13.05.2021 fixed boilstep detection with hoptimer
-# 15.05.2021 added multimode
-# 16.05.2021 added sensormode
-# 05.06.2021 added function to select a sensor via GUI (craftbeerpi4-ui enhancement from avollkopf necessary)
-# and sensormode shows all sensors of same sensortype. This is activated by default now.
-# To activate this function with Maunels repo please change
-# set_lcd_sensortype_for_sensor_mode to set_lcd_sensortype_for_sensor_mode2
-# and change
-# set_lcd_sensortype_for_sensor_mode1 into set_lcd_sensortype_for_sensor_mode.
-# 20.09.2021 removed RPLCD source files. Instead the package has to be installed. This is done by
-#
-# pipy related installation of plugin:
-# goto folder where CBPI4 is installed (at least the folder which is containing the config folder)
-# sudo pip3 install cbpi4-LCDisplay
-# sudo cbpi add cbpi4-LCDisplay
+
 
 logger = logging.getLogger(__name__)
-DEBUG = False  # turn True to show (much) more debug info in app.log
+DEBUG = True  # turn True to show (much) more debug info in app.log
 BLINK = False  # start value for blinking the beerglass during heating only for single mode
 global lcd
 # beerglass symbol
@@ -73,365 +59,227 @@ cool = (
     0b00100,
     0b00000
 )
-# Ä symbol because in A00 LCD there is no big Ä only small ä- If you use A02 LCD this is not necessary.
-awithdots = (
-    0b10001,
-    0b01110,
-    0b10001,
-    0b10001,
-    0b11111,
-    0b10001,
-    0b10001,
-    0b00000
-)
-# Ö symbol because in A00 LCD there is no big Ö only small ö- If you use A02 LCD this is not necessary.
-owithdots = (
-    0b10001,
-    0b01110,
-    0b10001,
-    0b10001,
-    0b10001,
-    0b10001,
-    0b01110,
-    0b00000
-)
-# Ü symbol because in A00 LCD there is no big Ü only small ü- If you use A02 LCD this is not necessary.
-uwithdots = (
-    0b01010,
-    0b10001,
-    0b10001,
-    0b10001,
-    0b10001,
-    0b10001,
-    0b01110,
-    0b00000
-)
-# ß symbol because in A00 LCD there is no ß If you use A02 LCD this is not necessary.
-esszett = (
-    0b00000,
-    0b00000,
-    0b11100,
-    0b10010,
-    0b10100,
-    0b10010,
-    0b11100,
-    0b10000
-)
-
 
 class LCDisplay(CBPiExtension):
     def __init__(self, cbpi):
         self.cbpi = cbpi
+        self.controller : StepController = cbpi.step
+        self.kettle_controller : KettleController = cbpi.kettle
+        self.fermenter_controller : FermentationController = cbpi.fermenter
+
         self._task = asyncio.create_task(self.run())
 
     async def run(self):
-        logger.info('LCDisplay - Info: Starting background task')
-
-        address = int(await self.set_lcd_address(), 16)
-        logger.info('LCDisplay - LCD address: %s' % await self.set_lcd_address())
-
+        logger.info('LCDisplay - Starting background task')
+        address1 = await self.set_lcd_address()
+        address = int(address1, 16)
+        if DEBUG: logger.info('LCDisplay - LCD address %s %s' % (address, address1))
         charmap = await self.set_lcd_charmap()
-        logger.info('LCDisplay - LCD charmap: %s' % charmap)
-
+        if DEBUG: logger.info('LCDisplay - LCD charmap: %s' % charmap)
         global lcd
         try:
             lcd = CharLCD(i2c_expander='PCF8574', address=address, port=1, cols=20, rows=4, dotsize=8, charmap=charmap,
-                          auto_linebreaks=True, backlight_enabled=True)
-            lcd.create_char(0, bierkrug)  # u"\x00"  -->beerglass symbol
-            lcd.create_char(1, cool)  # u"\x01"  -->Ice symbol
-            lcd.create_char(2, awithdots)  # u"\x02"  -->Ä
-            lcd.create_char(3, owithdots)  # u"\x03"  -->Ö
-            lcd.create_char(4, uwithdots)  # u"\x04"  -->Ü
-            lcd.create_char(5, esszett)  # u"\x05"  -->ß
-            if DEBUG: logger.info('LCDisplay - Info: LCD object set')
-        except Exception as e:
-            if DEBUG: logger.info('LCDisplay - Error: LCD object not set or wrong LCD address or LCD Module not '
-                                  'properly connected or LCD module is defect: {}'.format(e))
-            # self.cbpi.notify('LCDisplay:', 'LCD Address is wrong. You have to choose a different LCD Address. Key in '
-            #                               'at Raspi prompt: sudo i2cdetect -y 1 or sudo i2cdetect -y 0',
-            #                 NotificationType.ERROR)
+                      auto_linebreaks=True, backlight_enabled=True)
+            lcd.create_char(0, bierkrug)    # u"\x00"  -->beerglass symbol
+            lcd.create_char(1, cool)        # u"\x01"  -->Ice symbol
+        except:
+            if DEBUG: logger.info('LCDisplay - Error: LCD object not set, wrong LCD address: {}'.format(e))
         pass
 
+
+        if DEBUG: logger.info('LCDisplay - LCD object set')
         refresh = await self.set_lcd_refresh()
-        logger.info('LCDisplay - LCD refresh: %s' % refresh)
-
-        display_mode = await self.set_lcd_display_mode()
-        logger.info('LCDisplay - LCD display_mode: %s' % display_mode)
-
-        unit = await self.get_cbpi_temp_unit()
-        logger.info('LCDisplay - LCD unit: °%s' % unit)
-
+        if DEBUG: logger.info('LCDisplay - refresh %s' % refresh)
         single_kettle_id = await self.set_lcd_kettle_for_single_mode()
-        logger.info('LCDisplay - LCD single_kettle_id: %s' % single_kettle_id)
+        if DEBUG: logger.info('LCDisplay - single_kettle_id %s' % single_kettle_id)
 
-        sensor_for_sensor_mode = await self.set_lcd_sensortype_for_sensor_mode()
-        logger.info('LCDisplay - LCD sensor_for_sensor_mode: %s' % sensor_for_sensor_mode)
+        counter = 0
+        line_setting = 1
 
-        # *********************************************************************************************************
         while True:
+            fermenters = await self.get_active_fermenter()
+#            logger.info(fermenters)
             # this is the main code repeated constantly
-            display_mode = await self.set_lcd_display_mode()
-            refresh = await self.set_lcd_refresh()
-            active_step = await self.get_active_step_values()
-
-            if active_step != 'no active step' and display_mode == 'Multidisplay':
-                await self.show_multidisplay(refresh, charmap)
-            elif active_step != 'no active step' and display_mode == 'Singledisplay':
-                single_kettle_id = await self.set_lcd_kettle_for_single_mode()
-                await self.show_singledisplay(single_kettle_id, charmap)
-            elif active_step != 'no active step' and display_mode == 'Sensordisplay':
-                sensortype = await self.set_lcd_sensortype_for_sensor_mode()
-                await self.show_sensordisplay(sensortype, refresh, charmap)
-            else:
+            activity, name = await self.get_activity()
+            if activity is None and len(fermenters) == 0:
                 await self.show_standby()
-            pass
+            elif activity is None and len(fermenters) != 0:
+                if counter > (len(fermenters)-1):
+                        counter = 0
+                        line_setting = -1*line_setting
+                await self.show_fermenters(fermenters, counter, refresh, line_setting)
+                counter +=1
+            else:
+#                logging.info(activity)
+#                logging.info(name)
+                await self.show_activity(activity, name)
+#            await asyncio.sleep(refresh)
         pass
-        # *********************************************************************************************************
+
+    async def get_activity(self):
+        active_step = None
+        name = ""
+        data=self.controller.get_state()
+        try:
+            name = data['basic']['name']
+            steps=data['steps']
+            for step in steps:
+                if step['status'] == "A":
+                    active_step=step
+        except:
+           pass 
+
+        return active_step,name
+        await asyncio.sleep(1)
 
     async def show_standby(self):
-
         ip = await self.set_ip()
-        cbpi_version = await self.get_cbpi_version()
+        cbpi_version = self.cbpi.version
         breweryname = await self.get_breweryname()
         lcd._set_cursor_mode('hide')
         lcd.cursor_pos = (0, 0)
-        lcd.write_string(("CBPI       %s" % cbpi_version).ljust(20))
+        lcd.write_string(("CBPi       %s" % cbpi_version).ljust(20))
         lcd.cursor_pos = (1, 0)
         lcd.write_string(("%s" % breweryname).ljust(20))
         lcd.cursor_pos = (2, 0)
         lcd.write_string(("IP: %s" % ip).ljust(20))
         lcd.cursor_pos = (3, 0)
         lcd.write_string((strftime("%Y-%m-%d %H:%M:%S", time.localtime())).ljust(20))
+#        logging.info("Show Standby")
         await asyncio.sleep(1)
 
-    async def show_multidisplay(self, refresh_time=2.0, charmap="A00"):
-
-        kettle_json_obj = self.cbpi.kettle.get_state()
-        kettles = kettle_json_obj['data']
-        i = 0
-        multidisplay = True
-        while i < len(kettles):
-            try:
-                kettle_id = kettles[i]["id"]
-                # kettle_name = (kettles[i]["name"])
-                # logger.info("multi kettle_name: {}".format(kettle_name))
-                await self.show_singledisplay(kettle_id, charmap, refresh_time, multidisplay)
-            except Exception as e:
-                logger.error(e)
-            pass
-            i = i + 1
-        pass
-
-    async def show_singledisplay(self, kettle_id, charmap="A00", refresh_time=1.0, multidisplay=False):
-
-        # what if kettle_id ="" like a forgotten settings entry?  # todo
-        # get default Kettle from Settings
-        if kettle_id is None or kettle_id is "":
-            kettle_id = self.cbpi.config.get('MASH_TUN', None)
-        pass
-
-        steps = await self.get_active_step_values()
-        step_name1 = steps['active_step_name']
-        step_name = await self.cbidecode(step_name1, charmap)
-        # step_name = step_name1
-        step_state = steps['active_step_state_text']
-        # logger.info("step_state main: {}".format(step_state))
-        steps_props = steps['active_step_probs']
-
-        remaining_time = step_state.replace("Status: ", "")
-
-        kettlevalues = await self.get_kettle_values(kettle_id)
-        kettle_name1 = kettlevalues['kettle_name']
-        kettle_name = await self.cbidecode(kettle_name1, charmap)
-        # kettle_name = kettle_name1
-        kettle_target_temp = kettlevalues['kettle_target_temp']
-        kettle_sensor_id = kettlevalues['kettle_sensor_id']
-        kettle = self.cbpi.kettle.find_by_id(kettle_id)
-        heater = self.cbpi.actor.find_by_id(kettle.heater)
-        kettle_heater_status = heater.instance.state
-
-        sensor_value = self.cbpi.sensor.get_sensor_value(kettle_sensor_id).get('value')
-
-        lcd_unit = await self.get_cbpi_temp_unit()
-
-        if "Waiting for Target Temp" in remaining_time:
-            remaining_time = "Wait"
-            is_timer_running = False
-        elif remaining_time == "":
-            is_timer_running = False
-        elif remaining_time is None:
-            is_timer_running = False
+    async def show_fermenters(self,fermenters, index, refresh, line_setting):
+        fermenter = fermenters[index]
+        lines = ["","","",""]
+        status = fermenter['status']
+        lcd_unit = self.cbpi.config.get("TEMP_UNIT", "C")
+        lines[0] = (fermenter['name']).ljust(20)[:20]
+        lines[1] = (fermenter['BrewName']).ljust(20)[:20]
+        stepname=fermenter['step_name'] if fermenter['step_name'] is not None else "Step"
+        lines[2] = (stepname[:11]+"|"+fermenter['step_summary']).ljust(20)[:20]
+        target_temp = fermenter['target_temp']
+        sensor_value = fermenter['sensor_value']
+        if sensor_value == None:
+            lines[3] = ("Set/Act:%5.1f/ N/A%s%s" % (float(target_temp), u"°", lcd_unit))[:20]
         else:
-            is_timer_running = True
-        pass
+            lines[3] = ("Set/Act:%5.1f/%4.1f%s%s" % (float(target_temp), float(sensor_value), u"°", lcd_unit))[:20]
+        if line_setting == -1:
+            if fermenter['sensor2_value'] is not None and fermenter['sensor2_value'] != 0: 
+                line_value = float(fermenter['sensor2_value'])
+                line_unit = fermenter['sensor2_units']
+                if line_unit == "SG":
+                    lines[3]=("Spindle: %1.3f%s" % (line_value,line_unit)).ljust(20)[:20]
+                else:
+                    lines[3]=("Spindle: %2.1f%s" % (line_value, line_unit)).ljust(20)[:20]
+            else:
+                lines[3]=("Spindle: Waiting").ljust(20)[:20]
+#        logging.info(lines)
+        await self.write_lines(lines, status)
+#        logging.info("Show Fermenter Activity")
+        await asyncio.sleep(refresh) 
 
+        
+
+    async def show_activity(self, activity, name):
+        lines = ["","","",""]
+        lcd_unit = self.cbpi.config.get("TEMP_UNIT", "C")
+        active_step_props=activity['props']
+        try:
+            target_temp = active_step_props['Temp']
+        except:
+            target_temp = 0
+        try:
+            kettle_ID = active_step_props['Kettle']
+        except:
+            kettle_ID = None
+        try:
+            sensor_ID = active_step_props['Sensor']
+        except:
+            sensor_ID = None
+        try:
+            kettle = self.cbpi.kettle.find_by_id(kettle_ID)
+            heater = self.cbpi.actor.find_by_id(kettle.heater)
+            heater_state = heater.instance.state
+        except:
+            kettle = None
+            heater = None
+            heater_state = False
+
+        step_state = str(activity['state_text'])
+        try:
+            sensor_value = self.cbpi.sensor.get_sensor_value(sensor_ID).get('value')
+        except:
+            sensor_value = 0
+        if kettle is not None:
+            kettle_name = str(kettle.name)
+        else:
+            kettle_name = "N/A"
+
+        step_name = str(activity['name'])
         boil_check = step_name.lower()
-        if ("boil" in boil_check) is True:  # string "boil" in stepname detected
+        if boil_check.find("boil") != -1: # Boil Step
             try:
-                # convert 00:00:00 to sec
-                time_left = sum(x * int(t) for x, t in zip([3600, 60, 1], remaining_time.split(":")))
-                next_hop_alert = await self.get_next_hop_timer(steps_props, time_left)
-            except Exception as e:
-                # logger.error(e)
-                next_hop_alert = None
-            pass
-            # line1 the stepname
-            line1 = ("%s" % step_name).ljust(20)
+                time_left = sum(x * int(t) for x, t in zip([3600, 60, 1], step_state.split(":"))) 
+            except:
+                time_left = None
+            next_hop_alert = None
+            if time_left is not None:
+                next_hop_alert = await self.get_next_hop_timer(active_step_props, time_left)
 
-            # line2 if steptimer is running show remaining time and kettlename together
-            if is_timer_running is True:
-                line2 = (("%s %s" % (kettle_name.ljust(12)[:11], remaining_time)).ljust(20)[:20])
-                pass
-            else:
-                line2 = ('%s' % kettle_name.ljust(20)[:20])
-            pass
-
-            # step3 target temp and current temp in one line
-            try:
-                line3 = ("Set|Act:%4.0f°%5.1f%s%s" % (float(kettle_target_temp), float(sensor_value), "°", lcd_unit))[
-                        :20]
-            except Exception as e:
-                logger.error(e)
-                line3 = ("Set|Act:%4.0f°%s%s%s" % (float(kettle_target_temp), " n.a ", "°", lcd_unit))[:20]
-            pass
-
-            # line 4 if hoptimer running show it
+            lines[0] = ("%s" % step_name).ljust(20)
+            lines[1] = ("%s %s" % (kettle_name.ljust(12)[:11], step_state)).ljust(20)[:20]
+            lines[2] = ("Set|Act:%4.0f°%5.1f%s%s" % (float(target_temp), float(sensor_value), "°", lcd_unit))[:20] 
             if next_hop_alert is not None:
-                line4 = ("Add Hop in: %s" % next_hop_alert)[:20]
+                lines[3] = ("Add Hop in: %s" % next_hop_alert)[:20]
             else:
-                line4 = "                    "[:20]
-            pass
+                lines[3] = ("                    ")[:20]
+
         else:
-            # no string "boil" in stepname detected
-            # line1 the stepname
-            line1 = ('%s' % step_name.ljust(20)[:20])
-
-            # line2 when steptimer is running show remaining time and kettlename
-            if is_timer_running is True:
-                line2 = (("%s %s" % (kettle_name.ljust(12)[:11], remaining_time)).ljust(20)[:20])
-                pass
-            else:
-                line2 = ('%s' % kettle_name.ljust(20)[:20])
-            pass
-
-            # line 3 Target temp
-            line3 = ("Targ. Temp:%6.2f%s%s" % (float(kettle_target_temp), "°", lcd_unit)).ljust(20)[:20]
-
-            # line 4 Current temp
+            lines[0] = ("%s" % step_name).ljust(20)
+            lines[1] = ("%s %s" % (kettle_name.ljust(12)[:11], step_state)).ljust(20)[:20]
+            lines[2] = ("Targ. Temp:%6.2f%s%s" % (float(target_temp), "°", lcd_unit)).ljust(20)[:20]
             try:
-                line4 = ("Curr. Temp:%6.2f%s%s" % (float(sensor_value), "°", lcd_unit)).ljust(20)[:20]
-            except Exception as e:
-                logger.error(e)
-                line4 = (u"Curr. Temp: {}".format("No Data"))[:20]
-            pass
-        pass
+                lines[3] = ("Curr. Temp:%6.2f%s%s" % (float(sensor_value), "°", lcd_unit)).ljust(20)[:20]
+            except:
+                logger.info(
+                    "LCDDisplay  - single mode current sensor_value exception %s" % sensor_value)
+                lines[3] = ("Curr. Temp: %s" % "No Data")[:20]
+        status = 1 if heater_state == True else 0
+#        logging.info(lines)
+        await self.write_lines(lines,status)
+#        logging.info("Show Brewing Activity")
+        await asyncio.sleep(1)
 
+    async def write_lines(self,lines,status=0):
         lcd._set_cursor_mode('hide')
         lcd.cursor_pos = (0, 0)
-        lcd.write_string(line1.ljust(20))
-        lcd.cursor_pos = (0, 19)
-        # line 321 - 342 this is all about showing beerglass if heater of kettle is on.
-        # blinking in singlemode, constant in multimode
-        # blinking in single mode indicates that the instance is still running even if temperature is not
-        # changing for a while
-        # logger.info("Blinking multidisplay is in status: {}".format(multidisplay))
-        if multidisplay is False:
-            global BLINK
-            if BLINK is False and kettle_heater_status is True:
-                lcd.write_string("\x00")
-                BLINK = True
-            else:
-                lcd.write_string(" ")
-                BLINK = False
-            pass
-        elif multidisplay is True:
-            if kettle_heater_status is True:
-                lcd.write_string(u"\x00")
-            pass
-        else:
-            lcd.write_string(" ")
-            logger.error("Blinking multidisplay is in status: {}".format(multidisplay))
-        pass
+        lcd.write_string(lines[0])
+        if status == 1:
+            lcd.cursor_pos = (0, 18)
+            lcd.write_string(u" \x00")
+        if status == 2:
+            lcd.cursor_pos = (0, 18)
+            lcd.write_string(u" \x01")
         lcd.cursor_pos = (1, 0)
-        lcd.write_string(line2.ljust(20))
+        lcd.write_string(lines[1])
         lcd.cursor_pos = (2, 0)
-        lcd.write_string(line3.ljust(20))
+        lcd.write_string(lines[2])
         lcd.cursor_pos = (3, 0)
-        lcd.write_string(line4.ljust(20))
-        await asyncio.sleep(refresh_time)
+        lcd.write_string(lines[3])
 
-    async def show_sensordisplay(self, sensortype, refresh_time=1.0, charmap="A00"):
-
-        if sensortype is not None:
-            try:
-                sensor_json_obj = self.cbpi.sensor.get_state()
-                sensors = sensor_json_obj['data']
-                # if DEBUG: logger.info("sensors %s" % sensors)
-                i = 0
-                while i < len(sensors):
-                    if sensors[i]["type"] == sensortype:
-                        # sensortype = (sensors[i]["type"])
-                        sensor_name = (sensors[i]['name'])
-                        sensor_id = (sensors[i]['id'])
-                        sensor_value = self.cbpi.sensor.get_sensor_value(sensor_id).get('value')
-
-                        line1 = 'CBPi4 LCD Sensormode'
-                        line2 = '--------------------'
-                        # line2 = ('Type: %s' % (await self.cbidecode(sensortype, charmap))).ljust(20)[:20]
-                        line3 = ('%s' % (await self.cbidecode(sensor_name, charmap)).ljust(20)[:20])
-                        # line3 = (sensor_name.ljust(20))[:20]
-                        line4 = (str(sensor_value).ljust(20))[:20]
-
-                        lcd._set_cursor_mode('hide')
-                        lcd.cursor_pos = (0, 0)
-                        lcd.write_string(line1.ljust(20))
-                        lcd.cursor_pos = (1, 0)
-                        lcd.write_string(line2.ljust(20))
-                        lcd.cursor_pos = (2, 0)
-                        lcd.write_string(line3.ljust(20))
-                        lcd.cursor_pos = (3, 0)
-                        lcd.write_string(line4.ljust(20))
-                        await asyncio.sleep(refresh_time)
-                    i = i + 1
-                    # Todo if there is no match to sensortype of any sensor there need to be a sleep. Otherwise this is
-                    #  constantly running with no sleep at all. Blocks the website.
-                    #  Unlikely that this condition will happen
-                pass
-            except Exception as e:
-                logger.info(e)
-                await asyncio.sleep(refresh_time)
-        else:
-            line1 = 'CBPi4 LCD Sensormode'
-            line2 = '--------------------'
-            line3 = 'no sensor selected  '
-            line4 = 'or defined          '
-
-            lcd._set_cursor_mode('hide')
-            lcd.cursor_pos = (0, 0)
-            lcd.write_string(line1.ljust(20))
-            lcd.cursor_pos = (1, 0)
-            lcd.write_string(line2.ljust(20))
-            lcd.cursor_pos = (2, 0)
-            lcd.write_string(line3.ljust(20))
-            lcd.cursor_pos = (3, 0)
-            lcd.write_string(line4.ljust(20))
-            await asyncio.sleep(refresh_time)
-        pass
 
     async def get_next_hop_timer(self, active_step, time_left):
         hop_timers = []
         for x in range(1, 6):
             try:
-                hop_search_string = ('Hop_' + str(x))
-                hop = active_step[hop_search_string]
-                hop = int(hop) * 60
-            except Exception as e:
+                hop = int((active_step['Hop_' + str(x)])) * 60
+            except:
                 hop = None
             if hop is not None:
                 hop_left = time_left - hop
                 if hop_left > 0:
                     hop_timers.append(hop_left)
-                    if DEBUG: logger.info("LCDDisplay  - get_next_hop_timer %s %s" % (x, str(hop_timers)))
+#                    if DEBUG: logger.info("LCDDisplay  - get_next_hop_timer %s %s" % (x, str(hop_timers)))
                 pass
             pass
         pass
@@ -443,24 +291,6 @@ class LCDisplay(CBPiExtension):
         return next_hop_timer
         pass
 
-    async def get_cbpi_version(self):
-        try:
-            version = self.cbpi.version
-        except Exception as e:
-            logger.warning('no cbpi version found')
-            logger.warning(e)
-            version = "no vers."
-        return version
-
-    async def get_cbpi_temp_unit(self):
-        try:
-            unit = self.cbpi.config.get("TEMP_UNIT", None)
-        except Exception as e:
-            logger.warning('no cbpi temp. unit found')
-            logger.warning(e)
-            unit = "na"
-        pass
-        return unit
 
     async def set_ip(self):
         if await self.get_ip('wlan0') != 'Not connected':
@@ -480,32 +310,27 @@ class LCDisplay(CBPiExtension):
         try:
             ip_addr = socket.inet_ntoa(
                 fcntl.ioctl(so.fileno(), 0x8915, struct.pack('256s', bytes(interface.encode())[:15]))[20:24])
-        except Exception as e:
-            logger.warning('no ip found')
-            if DEBUG: logger.warning(e)
+        except:
             return ip_addr
         finally:
-            pass
-        return ip_addr
+            return ip_addr
 
     async def get_breweryname(self):
-        try:
-            brewery = self.cbpi.config.get("BREWERY_NAME", None)
-        except Exception as e:
-            logger.warning('no breweryname found')
-            logger.warning(e)
+        brewery = self.cbpi.config.get("BREWERY_NAME", None)
+        if brewery is None:
             brewery = "no name"
-        pass
         return brewery
+        pass
 
     async def set_lcd_address(self):
-        lcd_address = self.cbpi.config.get("LCD_Address", None)
+        # global lcd_address
+        lcd_address = self.cbpi.config.get("LCD_address", None)
         if lcd_address is None:
+            logger.info("LCD_Address added")
             try:
-                await self.cbpi.config.add("LCD_Address", '0x27', ConfigType.STRING,
+                await self.cbpi.config.add("LCD_address", '0x27', ConfigType.STRING,
                                            "LCD address like 0x27 or 0x3f, CBPi reboot required")
-                logger.info("LCD_Address added")
-                lcd_address = self.cbpi.config.get("LCD_Address", None)
+                lcd_address = self.cbpi.config.get("LCD_address", None)
             except Exception as e:
                 logger.warning('Unable to update config')
                 logger.warning(e)
@@ -553,7 +378,7 @@ class LCDisplay(CBPiExtension):
             logger.info("LCD_Display_Mode added")
             try:
                 await self.cbpi.config.add('LCD_Display_Mode', 'Multidisplay', ConfigType.SELECT,
-                                           'select the mode of the LCD Display, consult readme, NO! CBPi reboot '
+                                           'select the mode of the LCD Display, consult readme, NO! CBPi reboot'
                                            'required', [{"label": "Multidisplay", "value": 'Multidisplay'},
                                                         {"label": "Singledisplay", "value": 'Singledisplay'},
                                                         {"label": "Sensordisplay", "value": 'Sensordisplay'}])
@@ -566,48 +391,20 @@ class LCDisplay(CBPiExtension):
         return mode
 
     async def set_lcd_sensortype_for_sensor_mode(self):
-        # this mode is the desired mode but requires avollkopfs craftbeerpi4-ui
-        # avollkopfs repository is highly recommended to use
-        sensor_id = self.cbpi.config.get('LCD_Display_Sensortype', None)  # this is only Sensor ID not type
-        if sensor_id is None:
-            try:
-                await self.cbpi.config.add('LCD_Display_Sensortype', 'OneWire', ConfigType.SENSOR,
-                                           'ONLY use with this fork: https://github.com/avollkopf/craftbeerpi4, '
-                                           'select a sensor which is representing the sensortype you want to monitor '
-                                           'in LCD, consult readme, '
-                                           'NO! CBPi reboot required')
-                logger.info("LCD_Display_Sensortype added")
-                sensor_id = self.cbpi.config.get('LCD_Display_Sensortype', None)
-            except Exception as e:
-                logger.warning('Unable to update config')
-                logger.warning(e)
-            pass
-        pass
-        if sensor_id is not None:
-            sensor_values = await self.get_sensor_values_by_id(sensor_id)
-            sensor_type = (sensor_values["sensor_type"])
-        else:
-            sensor_type = None
-        # logger.info("sensor_type {}".format(sensor_type))
-        return sensor_type
-
-    async def set_lcd_sensortype_for_sensor_mode1(self):
-        # this mode should be used if you are not using avollkopf version of cbpi4-ui
         sensor_type = self.cbpi.config.get('LCD_Display_Sensortype', None)
         if sensor_type is None:
+            logger.info("LCD_Display_Sensortype added")
             try:
-                await self.cbpi.config.add('LCD_Display_Sensortype', 'OneWire', ConfigType.SELECT,
+                await self.cbpi.config.add('LCD_Display_Sensortype', 'ONE_WIRE_SENSOR', ConfigType.SELECT,
                                            'select the type of sensors to be displayed in LCD, consult readme, '
                                            'NO! CBPi reboot required',
-                                           [{"label": "OneWire", "value": 'OneWire'},
-                                            {"label": "iSpindle", "value": 'iSpindle'},
-                                            {"label": "MQTTSensor", "value": 'MQTTSensor'},
+                                           [{"label": "ONE_WIRE_SENSOR", "value": 'ONE_WIRE_SENSOR'},
+                                            {"label": "iSpindel", "value": 'iSpindel'},
+                                            {"label": "MQTT_SENSOR", "value": 'MQTT_SENSOR'},
+                                            {"label": "iSpindel", "value": 'iSpindel'},
                                             {"label": "eManometer", "value": 'eManometer'},
-                                            {"label": "phSensorADS1x15", "value": 'phSensorADS1x15'},
-                                            {"label": "HTTPSensor", "value": 'HTTPSensor'},
-                                            {"label": "CustomSensor", "value": 'CustomSensor'},
-                                            {"label": "HX711 Load Cell", "value": 'HX711 Load Cell'}])
-                logger.info("LCD_Display_Sensortype added")
+                                            {"label": "PHSensor", "value": 'PHSensor'},
+                                            {"label": "Http_Sensor", "value": 'Http_Sensor'}])
                 sensor_type = self.cbpi.config.get('LCD_Display_Sensortype', None)
             except Exception as e:
                 logger.warning('Unable to update config')
@@ -619,11 +416,11 @@ class LCDisplay(CBPiExtension):
     async def set_lcd_kettle_for_single_mode(self):
         kettle_id = self.cbpi.config.get('LCD_Singledisplay_Kettle', None)
         if kettle_id is None:
+            logger.info("LCD_Singledisplay_Kettle added")
             try:
                 await self.cbpi.config.add('LCD_Singledisplay_Kettle', '', ConfigType.KETTLE,
-                                           'select the kettle to be displayed in LCD, consult readme, '
+                                           'select the type of sensors to be displayed in LCD, consult readme, '
                                            'NO! CBPi reboot required')
-                logger.info("LCD_Singledisplay_Kettle added")
                 kettle_id = self.cbpi.config.get('LCD_Singledisplay_Kettle', None)
             except Exception as e:
                 logger.warning('Unable to update config')
@@ -632,122 +429,79 @@ class LCDisplay(CBPiExtension):
         pass
         return kettle_id
 
-    async def cbidecode(self, string, charmap="A00"):  # Changes some german Letters to be displayed
-        if charmap == "A00":
-            # if DEBUG: logger.info('LCDDisplay  - string: %s' % string)
-            replaced_text = string.replace("Ä", "\x02").replace("Ö", u"\x03").replace("Ü", "\x04").replace("ß",
-                                                                                                           "\x05")
-            # if DEBUG: logger.info('LCDDisplay  - replaced_text: %s' % replaced_text)
-            return replaced_text
-        else:
-            return string
-        pass
-
-    async def get_active_step_values(self):
+    async def get_active_fermenter(self):
+        fermenters = []
         try:
-            step_json_obj = self.cbpi.step.get_state()
-            steps = step_json_obj['steps']
+            self.fermenter = self.fermenter_controller.get_state()
+        except:
+            self.fermenter = None
+        if self.fermenter is not None:
+            for id in self.fermenter['data']:
+                    status = 0
+                    fermenter_id=(id['id'])
+                    self.fermenter=self.cbpi.fermenter._find_by_id(fermenter_id)
+                    heater = self.cbpi.actor.find_by_id(self.fermenter.heater)
+                    steps = self.fermenter.steps
+                    step_name = None
+                    step_summary = None
+                    for step in steps:
+                        if step.status == StepState.ACTIVE:
+                            step_name = step.name
+                            try:
+                                step_summary = str(step.instance.summary).replace(" ","")
+                            except:
+                                pass
+                    try:
+                        heater_state = heater.instance.state
+                    except:
+                        heater_state= False
 
-            i = 0
-            result = 'no active step'
-            while i < len(steps):
-                if steps[i]["status"] == "A":
-                    active_step_name = ("Name: %s" % (steps[i]["name"]))
-                    active_step_status = ("Status: %s" % (steps[i]["status"]))
-                    active_step_state_text = ("Status: %s" % (steps[i]["state_text"]))
-                    active_step_target_temp = ("Target Temp: %s°C" % (steps[i]["props"]["Temp"]))
-                    active_step_timer_value = ("Timer: %s" % (steps[i]["props"]["Timer"]))
-                    active_step_probs = (steps[i]["props"])
-                    return {'active_step_name': active_step_name,
-                            'active_step_status': active_step_status,
-                            'active_step_state_text': active_step_state_text,
-                            'active_step_target_temp': active_step_target_temp,
-                            'active_step_timer_value': active_step_timer_value,
-                            'active_step_probs': active_step_probs}
-                else:
-                    result = 'no active step'
-                pass
-                i = i + 1
-            pass
-            return result
+                    cooler = self.cbpi.actor.find_by_id(self.fermenter.cooler)
 
-        except Exception as e:
-            logger.warning(e)
-            return {'active_step_name': 'error',
-                    'active_step_status': 'error',
-                    'active_step_target_temp': 'error',
-                    'active_step_timer_value': 'error'}
-        pass
+                    try:
+                        cooler_state = cooler.instance.state
+                    except:
+                        cooler_state= False
 
-    async def get_kettle_values(self, kettle_id):
-        try:
-            kettle_json_obj = self.cbpi.kettle.get_state()
-            kettles = kettle_json_obj['data']
-            # if DEBUG: logger.info("kettles %s" % kettles)
-            i = 0
-            result = None
-            while i < len(kettles):
-                if kettles[i]["id"] == kettle_id:
-                    kettle_id = (kettles[i]["id"])
-                    kettle_name = (kettles[i]["name"])
-                    kettle_heater_id = (kettles[i]["heater"])
-                    kettle_sensor_id = (kettles[i]["sensor"])
-                    kettle_target_temp = (kettles[i]["target_temp"])
-                    return {'kettle_id': kettle_id,
-                            'kettle_name': kettle_name,
-                            'kettle_heater_id': kettle_heater_id,
-                            'kettle_sensor_id': kettle_sensor_id,
-                            'kettle_target_temp': kettle_target_temp}
-                else:
-                    result = 'no kettle found with id %s' % kettle_id
-                pass
-                i = i + 1
-            pass
-            return result
-        except Exception as e:
-            logger.warning(e)
-            return {'kettle_id': 'error',
-                    'kettle_name': 'error',
-                    'kettle_heater_id': 'error',
-                    'kettle_sensor_id': 'error',
-                    'kettle_target_temp': 'error'}
-        pass
-
-    pass
-
-    async def get_sensor_values_by_id(self, sensor_id):
-        try:
-            sensor_json_obj = self.cbpi.sensor.get_state()
-            sensors = sensor_json_obj['data']
-            # if DEBUG: logger.info("sensors %s" % sensors)
-            i = 0
-            while i < len(sensors):
-                if sensors[i]["id"] == sensor_id:
-                    sensor_type = (sensors[i]["type"])
-                    sensor_name = (sensors[i]["name"])
-                    # sensor_id = (sensors[i]['id'])
-                    sensor_props = (sensors[i]["props"])
-                    sensor_value = self.cbpi.sensor.get_sensor_value(sensor_id).get('value')
-                    return {'sensor_id': sensor_id,
-                            'sensor_name': sensor_name,
-                            'sensor_type': sensor_type,
-                            'sensor_value': sensor_value,
-                            'sensor_props': sensor_props}
-                else:
-
-                    pass
-                pass
-                i = i + 1
-            pass
-        except Exception as e:
-            logger.info(e)
-            return {'sensor_id': 'error',
-                    'sensor_name': 'error',
-                    'sensor_type': 'error',
-                    'sensor_value': 'error',
-                    'sensor_props': 'error'}
-        pass
-        await asyncio.sleep(1)
+                    try:
+                        state = self.fermenter.instance.state
+                    except:
+                        state = False
+                    if heater_state == True:
+                        status = 1
+                    elif cooler_state == True:
+                        status = 2
+                    name = id['name']
+                    target_temp = id['target_temp']
+                    sensor = id['sensor']
+                    try:
+                        BrewName = id['brewname']
+                    except:
+                        BrewName = "" 
+                    try:
+                        sensor_value = self.cbpi.sensor.get_sensor_value(sensor).get('value')
+                    except:
+                        sensor_value = None
+                    try:
+                        sensor2 = id['props']['sensor2']
+                    except:
+                        sensor2 = None
+                    try:
+                        if sensor2 is not None:
+                            sensor2_value = self.cbpi.sensor.get_sensor_value(sensor2).get('value')
+                            sensor2_props = self.cbpi.sensor.find_by_id(sensor2)
+                            sensor2_units = sensor2_props.props['Units']
+                        else:
+                            sensor2_value = None
+                            sensor2_units = None
+                    except:
+                        sensor2_value = None
+                        sensor2_units = ""
+                    if state != False:
+                        fermenter_string={'name': name, 'BrewName':BrewName, 'step_name': step_name, 'step_summary': step_summary[0:-3], 'target_temp': target_temp, 'sensor_value': sensor_value, 'sensor2': sensor2, 'sensor2_value': sensor2_value, "status": status, "sensor2_units": sensor2_units}
+                        fermenters.append(fermenter_string)
+        #logging.info(fermenters)
+        return fermenters
 
 
 def setup(cbpi):
