@@ -1,6 +1,2 @@
 include cbpi4-LCDisplay/config.yaml
-<<<<<<< Updated upstream
 recursive-include cbpi4-LCDisplay/static *
-=======
-recursive-include cbpi4-LCDisplay/static *
->>>>>>> Stashed changes

@@ -1,10 +1,14 @@
-Metadata-Version: 1.0
+Metadata-Version: 2.1
 Name: cbpi4-LCDisplay
-Version: 5.0.8
-Summary: CraftBeerPi4 LCD Display Plugin
-Home-page: https://github.com/JamFfm/cbpi4-LCDisplay
-Author: Jan Battermann
-Author-email: Jan.Battermann@t-online.de
+Version: 0.0.3
+Summary: CraftBeerPi4 LCD Plugin Mod
+Home-page: https://github.com/avollkopf/cbpi4-LCDisplay
+Author: Alexander Vollkopf
+Author-email: avollkopf@web.de
 License: GPLv3
-Description: UNKNOWN
+Description: # craftbeerpi4-plugin-template
+        
+        This is a mod of Jan Battermans LCD Display plugin for CraftbeerrPi 4
+        
 Platform: UNKNOWN
+Description-Content-Type: text/markdown
