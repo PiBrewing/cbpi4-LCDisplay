@@ -7,7 +7,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='cbpi4-LCDisplay',
-      version='0.0.4',
+      version='0.0.5',
       description='CraftBeerPi4 LCD Plugin Mod',
       author='Alexander Vollkopf',
       author_email='avollkopf@web.de',
@@ -20,9 +20,6 @@ setup(name='cbpi4-LCDisplay',
       '': ['*.txt', '*.rst', '*.yaml'],
       'LCDisplay': ['*','*.txt', '*.rst', '*.yaml']},
       #packages=['cbpi4-LCDisplay'],
-	    install_requires=[
-            'cbpi>=4.0.0.33',
-      ],
       long_description=long_description,
       long_description_content_type='text/markdown'
      )
