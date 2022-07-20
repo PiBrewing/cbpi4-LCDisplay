@@ -6,8 +6,8 @@ this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-setup(name='LCDisplay',
-      version='0.0.2',
+setup(name='cbpi4-LCDisplay',
+      version='0.0.5',
       description='CraftBeerPi4 LCD Plugin Mod',
       author='Alexander Vollkopf',
       author_email='avollkopf@web.de',
@@ -19,10 +19,7 @@ setup(name='LCDisplay',
         # If any package contains *.txt or *.rst files, include them:
       '': ['*.txt', '*.rst', '*.yaml'],
       'LCDisplay': ['*','*.txt', '*.rst', '*.yaml']},
-      #packages=['LCDisplay'],
-	    install_requires=[
-            'cbpi>=4.0.0.33',
-      ],
+      #packages=['cbpi4-LCDisplay'],
       long_description=long_description,
       long_description_content_type='text/markdown'
      )
