@@ -207,7 +207,10 @@ class LCDisplay(CBPiExtension):
 
         step_state = str(activity['state_text'])
         try:
-            sensor_value = self.cbpi.sensor.get_sensor_value(sensor_ID).get('value')
+            if (sensor_ID is not None) and sensor_ID != "":
+                sensor_value = self.cbpi.sensor.get_sensor_value(sensor_ID).get('value')
+            else:
+                sensor_value = 0
         except:
             sensor_value = 0
         if kettle is not None:
