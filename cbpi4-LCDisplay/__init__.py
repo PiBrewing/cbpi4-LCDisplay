@@ -185,7 +185,7 @@ class LCDisplay(CBPiExtension):
         lcd_unit = self.cbpi.config.get("TEMP_UNIT", "C")
         active_step_props=activity['props']
         try:
-            target_temp = active_step_props['Temp']
+            target_temp = float(active_step_props['Temp'])
         except:
             target_temp = 0
         try:
