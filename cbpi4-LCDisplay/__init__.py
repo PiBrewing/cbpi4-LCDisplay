@@ -482,7 +482,10 @@ class LCDisplay(CBPiExtension):
                     except:
                         BrewName = "" 
                     try:
-                        sensor_value = self.cbpi.sensor.get_sensor_value(sensor).get('value')
+                        if (sensor is not None) and sensor != "":
+                            sensor_value = self.cbpi.sensor.get_sensor_value(sensor).get('value')
+                        else:
+                            sensor_value = None
                     except:
                         sensor_value = None
                     try:
@@ -490,7 +493,7 @@ class LCDisplay(CBPiExtension):
                     except:
                         sensor2 = None
                     try:
-                        if sensor2 is not None:
+                        if (sensor2 is not None) and sensor2 !="":
                             sensor2_value = self.cbpi.sensor.get_sensor_value(sensor2).get('value')
                             sensor2_props = self.cbpi.sensor.find_by_id(sensor2)
                             sensor2_units = sensor2_props.props['Units']
