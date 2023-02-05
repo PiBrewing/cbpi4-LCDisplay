@@ -135,10 +135,15 @@ class LCDisplay(CBPiExtension):
     async def show_standby(self):
         ip = await self.set_ip()
         cbpi_version = self.cbpi.version
+        try:
+            versionlength=len(cbpi_version)
+        except:
+            versionlength=5
         breweryname = await self.get_breweryname()
+        line1="CBPi".ljust(20-versionlength)+cbpi_version
         lcd._set_cursor_mode('hide')
         lcd.cursor_pos = (0, 0)
-        lcd.write_string(("CBPi       %s" % cbpi_version).ljust(20))
+        lcd.write_string(line1.ljust(20))
         lcd.cursor_pos = (1, 0)
         lcd.write_string(("%s" % breweryname).ljust(20))
         lcd.cursor_pos = (2, 0)
