@@ -457,6 +457,10 @@ class LCDisplay(CBPiExtension):
                             step_name = step.name
                             try:
                                 step_summary = str(step.instance.summary).replace(" ","")
+                                if step_summary.find("Waiting") != -1:
+                                    step_summary="Waiting"
+                                if step_summary.find("Ramping") != -1:
+                                    step_summary="Ramping"
                             except:
                                 pass
                     try:
