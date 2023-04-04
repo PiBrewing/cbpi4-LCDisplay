@@ -348,98 +348,192 @@ class LCDisplay(CBPiExtension):
     async def set_lcd_settings(self):
         # global lcd_address
         lcd_address = self.cbpi.config.get("LCD_address", None)
+        lcd_charmap = self.cbpi.config.get("LCD_Charactermap", None)
+        ref = self.cbpi.config.get('LCD_Refresh', None)
+        mode = self.cbpi.config.get('LCD_Display_Mode', None)
+        sensor_type = self.cbpi.config.get('LCD_Display_Sensortype', None)
+        kettle_id = self.cbpi.config.get('LCD_Singledisplay_Kettle', None)
+
         if lcd_address is None:
             logger.info("LCD_Address added")
             try:
-                await self.cbpi.config.add("LCD_address", '0x27', ConfigType.STRING,
-                                           "LCD address like 0x27 or 0x3f, CBPi reboot required")
+                await self.cbpi.config.add("LCD_address", '0x27', type=ConfigType.STRING,
+                                           description="LCD address like 0x27 or 0x3f, CBPi reboot required",
+                                           source='cbpi4-LCDisplay')
                 lcd_address = self.cbpi.config.get("LCD_address", None)
             except Exception as e:
                 logger.warning('Unable to update config')
                 logger.warning(e)
             pass
-        pass
-        
-        lcd_charmap = self.cbpi.config.get("LCD_Charactermap", None)
+        else:
+            if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
+                try:
+                    logging.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    await self.cbpi.config.add("LCD_address", lcd_address, type=ConfigType.STRING,
+                                           description="LCD address like 0x27 or 0x3f, CBPi reboot required",
+                                           source='cbpi4-LCDisplay')
+                except Exception as e:
+                    logger.warning('Unable to update config')
+                    logger.warning(e)
+                pass  
+
         if lcd_charmap is None:
             logger.info("LCD_Charactermap added")
             try:
-                await self.cbpi.config.add("LCD_Charactermap", 'A00', ConfigType.SELECT, "LCD Charactermap like A00, "
-                                                                                         "A02, CBPi reboot required",
-                                           [{"label": "A00", "value": "A00"}, {"label": "A02", "value": "A02"}])
+                await self.cbpi.config.add("LCD_Charactermap", 'A00', type=ConfigType.SELECT, 
+                                           description="LCD Charactermap like A00, A02, CBPi reboot required",
+                                           options=[{"label": "A00", "value": "A00"}, {"label": "A02", "value": "A02"}],
+                                           source='cbpi4-LCDisplay')
                 lcd_charmap = self.cbpi.config.get("LCD_Charactermap", None)
             except Exception as e:
                 logger.warning('Unable to update config')
                 logger.warning(e)
             pass
-        pass
+        else:
+            if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
+                try:
+                    logging.error("------------------------------------------------------------------------------------")
+                    await self.cbpi.config.add("LCD_Charactermap", lcd_charmap, type=ConfigType.SELECT, 
+                                               description="LCD Charactermap like A00, A02, CBPi reboot required",
+                                           options=[{"label": "A00", "value": "A00"}, {"label": "A02", "value": "A02"}],
+                                           source='cbpi4-LCDisplay')
+                except Exception as e:
+                    logger.warning('Unable to update config')
+                    logger.warning(e)
+                pass
 
-        ref = self.cbpi.config.get('LCD_Refresh', None)
         if ref is None:
             logger.info("LCD_Refresh added")
             try:
-                await self.cbpi.config.add('LCD_Refresh', 3, ConfigType.SELECT,
-                                           'Time to remain till next display in sec, NO! CBPi reboot '
-                                           'required', [{"label": "1s", "value": 1}, {"label": "2s", "value": 2},
+                await self.cbpi.config.add('LCD_Refresh', 3, type=ConfigType.SELECT,
+                                           descriptio= 'Time to remain till next display in sec, NO! CBPi reboot required', 
+                                           options=[{"label": "1s", "value": 1}, {"label": "2s", "value": 2},
                                                         {"label": "3s", "value": 3}, {"label": "4s", "value": 4},
-                                                        {"label": "5s", "value": 5}, {"label": "6s", "value": 6}])
+                                                        {"label": "5s", "value": 5}, {"label": "6s", "value": 6}],
+                                                        source='cbpi4-LCDisplay')
                 ref = self.cbpi.config.get('LCD_Refresh', None)
             except Exception as e:
                 logger.warning('Unable to update config')
                 logger.warning(e)
             pass
-        pass
+        else:
+            if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
+                try:
+                    logging.error("**************************************************************************************")
+                    await self.cbpi.config.add('LCD_Refresh', ref, type=ConfigType.SELECT,
+                                           descriptio= 'Time to remain till next display in sec, NO! CBPi reboot required', 
+                                           options=[{"label": "1s", "value": 1}, {"label": "2s", "value": 2},
+                                                        {"label": "3s", "value": 3}, {"label": "4s", "value": 4},
+                                                        {"label": "5s", "value": 5}, {"label": "6s", "value": 6}],
+                                                        source='cbpi4-LCDisplay')
+                except Exception as e:
+                    logger.warning('Unable to update config')
+                    logger.warning(e)
+                pass
 
-        mode = self.cbpi.config.get('LCD_Display_Mode', None)
         if mode is None:
             logger.info("LCD_Display_Mode added")
             try:
-                await self.cbpi.config.add('LCD_Display_Mode', 'Multidisplay', ConfigType.SELECT,
-                                           'select the mode of the LCD Display, consult readme, NO! CBPi reboot'
-                                           'required', [{"label": "Multidisplay", "value": 'Multidisplay'},
+                await self.cbpi.config.add('LCD_Display_Mode', 'Multidisplay', type=ConfigType.SELECT,
+                                           description='select the mode of the LCD Display, consult readme, NO! CBPi reboot required',
+                                           options=[{"label": "Multidisplay", "value": 'Multidisplay'},
                                                         {"label": "Singledisplay", "value": 'Singledisplay'},
-                                                        {"label": "Sensordisplay", "value": 'Sensordisplay'}])
+                                                        {"label": "Sensordisplay", "value": 'Sensordisplay'}],
+                                                        source='cbpi4-LCDisplay')
                 mode = self.cbpi.config.get('LCD_Display_Mode', None)
             except Exception as e:
                 logger.warning('Unable to update config')
                 logger.warning(e)
             pass
-        pass
+        else:
+            if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
+                try:
+                    logging.error("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                    await self.cbpi.config.add('LCD_Display_Mode', 'Multidisplay', type=ConfigType.SELECT,
+                                           description='select the mode of the LCD Display, consult readme, NO! CBPi reboot required',
+                                           options=[{"label": "Multidisplay", "value": 'Multidisplay'},
+                                                        {"label": "Singledisplay", "value": 'Singledisplay'},
+                                                        {"label": "Sensordisplay", "value": 'Sensordisplay'}],
+                                                        source='cbpi4-LCDisplay')
+                except Exception as e:
+                    logger.warning('Unable to update config')
+                    logger.warning(e)
+                pass
 
-        sensor_type = self.cbpi.config.get('LCD_Display_Sensortype', None)
         if sensor_type is None:
             logger.info("LCD_Display_Sensortype added")
             try:
-                await self.cbpi.config.add('LCD_Display_Sensortype', 'ONE_WIRE_SENSOR', ConfigType.SELECT,
-                                           'select the type of sensors to be displayed in LCD, consult readme, '
+                await self.cbpi.config.add('LCD_Display_Sensortype', 'ONE_WIRE_SENSOR', type=ConfigType.SELECT,
+                                           description='select the type of sensors to be displayed in LCD, consult readme, '
                                            'NO! CBPi reboot required',
-                                           [{"label": "ONE_WIRE_SENSOR", "value": 'ONE_WIRE_SENSOR'},
+                                           options=[{"label": "ONE_WIRE_SENSOR", "value": 'ONE_WIRE_SENSOR'},
                                             {"label": "iSpindel", "value": 'iSpindel'},
                                             {"label": "MQTT_SENSOR", "value": 'MQTT_SENSOR'},
                                             {"label": "iSpindel", "value": 'iSpindel'},
                                             {"label": "eManometer", "value": 'eManometer'},
                                             {"label": "PHSensor", "value": 'PHSensor'},
-                                            {"label": "Http_Sensor", "value": 'Http_Sensor'}])
+                                            {"label": "Http_Sensor", "value": 'Http_Sensor'}],
+                                            source='cbpi4-LCDisplay')
                 sensor_type = self.cbpi.config.get('LCD_Display_Sensortype', None)
             except Exception as e:
                 logger.warning('Unable to update config')
                 logger.warning(e)
             pass
-        pass
+        else:
+            if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
+                try:
+                    logging.error("/////////////////////////////////////////////////////////////////////////////////////")
+                    await self.cbpi.config.add('LCD_Display_Sensortype', 'ONE_WIRE_SENSOR', type=ConfigType.SELECT,
+                                           description='select the type of sensors to be displayed in LCD, consult readme, '
+                                           'NO! CBPi reboot required',
+                                           options=[{"label": "ONE_WIRE_SENSOR", "value": 'ONE_WIRE_SENSOR'},
+                                            {"label": "iSpindel", "value": 'iSpindel'},
+                                            {"label": "MQTT_SENSOR", "value": 'MQTT_SENSOR'},
+                                            {"label": "iSpindel", "value": 'iSpindel'},
+                                            {"label": "eManometer", "value": 'eManometer'},
+                                            {"label": "PHSensor", "value": 'PHSensor'},
+                                            {"label": "Http_Sensor", "value": 'Http_Sensor'}],
+                                            source='cbpi4-LCDisplay')
+                except Exception as e:
+                    logger.warning('Unable to update config')
+                    logger.warning(e)
+                pass                    
 
-        kettle_id = self.cbpi.config.get('LCD_Singledisplay_Kettle', None)
         if kettle_id is None:
             logger.info("LCD_Singledisplay_Kettle added")
             try:
-                await self.cbpi.config.add('LCD_Singledisplay_Kettle', '', ConfigType.KETTLE,
-                                           'select the type of sensors to be displayed in LCD, consult readme, '
-                                           'NO! CBPi reboot required')
+                await self.cbpi.config.add('LCD_Singledisplay_Kettle', '', type=ConfigType.KETTLE,
+                                           description='select the type of sensors to be displayed in LCD, consult readme, '
+                                           'NO! CBPi reboot required',
+                                           source='cbpi4-LCDisplay')
                 kettle_id = self.cbpi.config.get('LCD_Singledisplay_Kettle', None)
             except Exception as e:
                 logger.warning('Unable to update config')
                 logger.warning(e)
             pass
-        pass
+        else:
+            if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
+                try:
+                    logging.error("#######################################################################################")
+                    await self.cbpi.config.add('LCD_Singledisplay_Kettle', '', type=ConfigType.KETTLE,
+                                           description='select the type of sensors to be displayed in LCD, consult readme, '
+                                           'NO! CBPi reboot required',
+                                           source='cbpi4-LCDisplay')
+                except Exception as e:
+                    logger.warning('Unable to update config')
+                    logger.warning(e)
+                pass
+        
+        if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
+            try:
+                await self.cbpi.config.add("LCDisplay_update", self.version, type=ConfigType.STRING,
+                                           description="LCD address version",
+                                           source='hidden')
+            except Exception as e:
+                logger.warning('Unable to update config')
+                logger.warning(e)
+            pass
+
         return lcd_address, lcd_charmap, ref, mode, sensor_type, kettle_id
 
 
