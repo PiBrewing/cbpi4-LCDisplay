@@ -18,6 +18,7 @@ from cbpi.api.dataclasses import Fermenter, Kettle, Props
 from cbpi.api.step import StepState
 from cbpi.api.base import CBPiBase
 from aiohttp import web
+import os, re
 
 # LCDVERSION = '5.0.01'
 #
@@ -70,11 +71,23 @@ class LCDisplay(CBPiExtension):
         self._task = asyncio.create_task(self.run())
 
     async def run(self):
+        this_directory = os.path.join( os.path.dirname( __file__ ), '..' )
+        with open(os.path.join(this_directory, 'version.py'), encoding='latin1') as fp:
+            #long_description = fp.read()
+            try:
+                match = re.search('.*\"(.*)\"', fp.readline())
+                self.version = match.group(1)
+            except:
+                self.version="0.0.0"
+        self.LCDisplay_update = self.cbpi.config.get("LCDisplay_update", None)
+
         logger.info('LCDisplay - Starting background task')
-        address1 = await self.set_lcd_address()
+
+        address1, charmap, refresh, mode, sensor_type, single_kettle_id = await self.set_lcd_settings()
+        
         address = int(address1, 16)
         if DEBUG: logger.info('LCDisplay - LCD address %s %s' % (address, address1))
-        charmap = await self.set_lcd_charmap()
+
         if DEBUG: logger.info('LCDisplay - LCD charmap: %s' % charmap)
         global lcd
         try:
@@ -88,9 +101,9 @@ class LCDisplay(CBPiExtension):
 
 
         if DEBUG: logger.info('LCDisplay - LCD object set')
-        refresh = await self.set_lcd_refresh()
+
         if DEBUG: logger.info('LCDisplay - refresh %s' % refresh)
-        single_kettle_id = await self.set_lcd_kettle_for_single_mode()
+
         if DEBUG: logger.info('LCDisplay - single_kettle_id %s' % single_kettle_id)
 
         counter = 0
@@ -332,7 +345,7 @@ class LCDisplay(CBPiExtension):
         return brewery
         pass
 
-    async def set_lcd_address(self):
+    async def set_lcd_settings(self):
         # global lcd_address
         lcd_address = self.cbpi.config.get("LCD_address", None)
         if lcd_address is None:
@@ -346,9 +359,7 @@ class LCDisplay(CBPiExtension):
                 logger.warning(e)
             pass
         pass
-        return lcd_address
-
-    async def set_lcd_charmap(self):
+        
         lcd_charmap = self.cbpi.config.get("LCD_Charactermap", None)
         if lcd_charmap is None:
             logger.info("LCD_Charactermap added")
@@ -362,9 +373,7 @@ class LCDisplay(CBPiExtension):
                 logger.warning(e)
             pass
         pass
-        return lcd_charmap
 
-    async def set_lcd_refresh(self):
         ref = self.cbpi.config.get('LCD_Refresh', None)
         if ref is None:
             logger.info("LCD_Refresh added")
@@ -380,9 +389,7 @@ class LCDisplay(CBPiExtension):
                 logger.warning(e)
             pass
         pass
-        return ref
 
-    async def set_lcd_display_mode(self):
         mode = self.cbpi.config.get('LCD_Display_Mode', None)
         if mode is None:
             logger.info("LCD_Display_Mode added")
@@ -398,9 +405,7 @@ class LCDisplay(CBPiExtension):
                 logger.warning(e)
             pass
         pass
-        return mode
 
-    async def set_lcd_sensortype_for_sensor_mode(self):
         sensor_type = self.cbpi.config.get('LCD_Display_Sensortype', None)
         if sensor_type is None:
             logger.info("LCD_Display_Sensortype added")
@@ -421,9 +426,7 @@ class LCDisplay(CBPiExtension):
                 logger.warning(e)
             pass
         pass
-        return sensor_type
 
-    async def set_lcd_kettle_for_single_mode(self):
         kettle_id = self.cbpi.config.get('LCD_Singledisplay_Kettle', None)
         if kettle_id is None:
             logger.info("LCD_Singledisplay_Kettle added")
@@ -437,7 +440,8 @@ class LCDisplay(CBPiExtension):
                 logger.warning(e)
             pass
         pass
-        return kettle_id
+        return lcd_address, lcd_charmap, ref, mode, sensor_type, kettle_id
+
 
     async def get_active_fermenter(self):
         fermenters = []

@@ -2,17 +2,29 @@ from setuptools import setup, find_packages
 
 # read the contents of your README file
 from os import path
+import re
+
 this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+with open(path.join(this_directory, 'version.py'), encoding='latin1') as fp:
+    #long_description = fp.read()
+    try:
+        match = re.search('.*\"(.*)\"', fp.readline())
+        print(match)
+        version = match.group(1)
+    except IndexError:
+        raise RuntimeError('Unable to determine version.')
+
 setup(name='cbpi4-LCDisplay',
-      version='0.0.10',
+      version=version,
       description='CraftBeerPi4 LCD Plugin Mod',
       author='Alexander Vollkopf',
       author_email='avollkopf@web.de',
-      url='https://github.com/avollkopf/cbpi4-LCDisplay',
+      url='https://github.com/PiBrewing/cbpi4-LCDisplay',
       license='GPLv3',
+      keywords='globalsettings',
       packages=find_packages(),
       include_package_data=True,
       package_data={
