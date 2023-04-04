@@ -342,7 +342,7 @@ class LCDisplay(CBPiExtension):
 
     async def set_lcd_settings(self):
         # global lcd_address
-        lcd_address = self.cbpi.config.get("LCD_address", None)
+        lcd_address = self.cbpi.config.get("LCD_Address", None)
         lcd_charmap = self.cbpi.config.get("LCD_Charactermap", None)
         ref = self.cbpi.config.get('LCD_Refresh', None)
         mode = self.cbpi.config.get('LCD_Display_Mode', None)
@@ -352,7 +352,7 @@ class LCDisplay(CBPiExtension):
         if lcd_address is None:
             logger.info("LCD_Address added")
             try:
-                await self.cbpi.config.add("LCD_address", '0x27', type=ConfigType.STRING,
+                await self.cbpi.config.add("LCD_Address", '0x27', type=ConfigType.STRING,
                                            description="LCD address like 0x27 or 0x3f, CBPi reboot required",
                                            source='cbpi4-LCDisplay')
                 lcd_address = self.cbpi.config.get("LCD_address", None)
@@ -364,7 +364,7 @@ class LCDisplay(CBPiExtension):
             if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
                 try:
                     logging.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                    await self.cbpi.config.add("LCD_address", lcd_address, type=ConfigType.STRING,
+                    await self.cbpi.config.add("LCD_Address", lcd_address, type=ConfigType.STRING,
                                            description="LCD address like 0x27 or 0x3f, CBPi reboot required",
                                            source='cbpi4-LCDisplay')
                 except Exception as e:
