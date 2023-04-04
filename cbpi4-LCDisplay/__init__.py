@@ -71,14 +71,9 @@ class LCDisplay(CBPiExtension):
         self._task = asyncio.create_task(self.run())
 
     async def run(self):
-        this_directory = os.path.join( os.path.dirname( __file__ ), '..' )
-        with open(os.path.join(this_directory, 'version.py'), encoding='latin1') as fp:
-            #long_description = fp.read()
-            try:
-                match = re.search('.*\"(.*)\"', fp.readline())
-                self.version = match.group(1)
-            except:
-                self.version="0.0.0"
+        plugin = await self.cbpi.plugin.load_plugin_list("cbpi4-LCDisplay")
+        self.version=plugin[0].get("Version","0.0.0")
+
         self.LCDisplay_update = self.cbpi.config.get("LCDisplay_update", None)
 
         logger.info('LCDisplay - Starting background task')
