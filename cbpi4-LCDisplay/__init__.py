@@ -406,7 +406,7 @@ class LCDisplay(CBPiExtension):
             logger.info("LCD_Refresh added")
             try:
                 await self.cbpi.config.add('LCD_Refresh', 3, type=ConfigType.SELECT,
-                                           descriptio= 'Time to remain till next display in sec, NO! CBPi reboot required', 
+                                           description= 'Time to remain till next display in sec, NO! CBPi reboot required', 
                                            options=[{"label": "1s", "value": 1}, {"label": "2s", "value": 2},
                                                         {"label": "3s", "value": 3}, {"label": "4s", "value": 4},
                                                         {"label": "5s", "value": 5}, {"label": "6s", "value": 6}],
@@ -421,7 +421,7 @@ class LCDisplay(CBPiExtension):
                 try:
                     logging.error("**************************************************************************************")
                     await self.cbpi.config.add('LCD_Refresh', ref, type=ConfigType.SELECT,
-                                           descriptio= 'Time to remain till next display in sec, NO! CBPi reboot required', 
+                                           description= 'Time to remain till next display in sec, NO! CBPi reboot required', 
                                            options=[{"label": "1s", "value": 1}, {"label": "2s", "value": 2},
                                                         {"label": "3s", "value": 3}, {"label": "4s", "value": 4},
                                                         {"label": "5s", "value": 5}, {"label": "6s", "value": 6}],
