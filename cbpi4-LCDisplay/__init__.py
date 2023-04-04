@@ -444,7 +444,7 @@ class LCDisplay(CBPiExtension):
             if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
                 try:
                     logging.error("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                    await self.cbpi.config.add('LCD_Display_Mode', 'Multidisplay', type=ConfigType.SELECT,
+                    await self.cbpi.config.add('LCD_Display_Mode', mode, type=ConfigType.SELECT,
                                            description='select the mode of the LCD Display, consult readme, NO! CBPi reboot required',
                                            options=[{"label": "Multidisplay", "value": 'Multidisplay'},
                                                         {"label": "Singledisplay", "value": 'Singledisplay'},
@@ -478,7 +478,7 @@ class LCDisplay(CBPiExtension):
             if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
                 try:
                     logging.error("/////////////////////////////////////////////////////////////////////////////////////")
-                    await self.cbpi.config.add('LCD_Display_Sensortype', 'ONE_WIRE_SENSOR', type=ConfigType.SELECT,
+                    await self.cbpi.config.add('LCD_Display_Sensortype', sensor_type, type=ConfigType.SELECT,
                                            description='select the type of sensors to be displayed in LCD, consult readme, '
                                            'NO! CBPi reboot required',
                                            options=[{"label": "ONE_WIRE_SENSOR", "value": 'ONE_WIRE_SENSOR'},
@@ -510,7 +510,7 @@ class LCDisplay(CBPiExtension):
             if self.LCDisplay_update == None or self.LCDisplay_update != self.version:
                 try:
                     logging.error("#######################################################################################")
-                    await self.cbpi.config.add('LCD_Singledisplay_Kettle', '', type=ConfigType.KETTLE,
+                    await self.cbpi.config.add('LCD_Singledisplay_Kettle', kettle_id, type=ConfigType.KETTLE,
                                            description='select the type of sensors to be displayed in LCD, consult readme, '
                                            'NO! CBPi reboot required',
                                            source='cbpi4-LCDisplay')
