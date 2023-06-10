@@ -91,7 +91,7 @@ class LCDisplay(CBPiExtension):
                       auto_linebreaks=True, backlight_enabled=True)
             lcd.create_char(0, bierkrug)    # u"\x00"  -->beerglass symbol
             lcd.create_char(1, cool)        # u"\x01"  -->Ice symbol
-        except:
+        except Exception as e:
             if DEBUG: logger.info('LCDisplay - Error: LCD object not set, wrong LCD address: {}'.format(e))
         pass
 
