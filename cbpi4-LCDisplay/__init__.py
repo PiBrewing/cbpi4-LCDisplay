@@ -604,6 +604,8 @@ class LCDisplay(CBPiExtension):
                         sensor2_value = None
                         sensor2_units = ""
                     if state != False:
+                        if step_summary == None:
+                            step_summary = "   "
                         fermenter_string={'name': name, 'BrewName':BrewName, 'step_name': step_name, 'step_summary': step_summary[0:-3], 'target_temp': target_temp, 'sensor_value': sensor_value, 'sensor2': sensor2, 'sensor2_value': sensor2_value, "status": status, "sensor2_units": sensor2_units}
                         fermenters.append(fermenter_string)
         #logging.info(fermenters)
