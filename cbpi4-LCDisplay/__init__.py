@@ -68,7 +68,7 @@ rightarrow = (
     0b11111,
     0b00010,
     0b00100,
-    0b01000,
+    0b00000,
     0b00000
 )
 class LCDisplay(CBPiExtension):
@@ -286,7 +286,7 @@ class LCDisplay(CBPiExtension):
         lcd.write_string(lines[0])
         if status == 1:
             lcd.cursor_pos = (0, 18)
-            lcd.write_string(u" \x02")
+            lcd.write_string(u" \x00")
         if status == 2:
             lcd.cursor_pos = (0, 18)
             lcd.write_string(u" \x01")
@@ -563,6 +563,8 @@ class LCDisplay(CBPiExtension):
                                     step_summary="Waiting   "
                                 if step_summary.find("Ramping") != -1:
                                     step_summary="Ramping   "
+                                if step_summary.find("ECD:") != -1:
+                                    step_summary = step_summary.replace("EDC:", u"\x02 ")
                             except:
                                 pass
                     try:
