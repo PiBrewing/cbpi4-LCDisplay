@@ -22,9 +22,9 @@ setup(name='cbpi4-LCDisplay',
       '': ['*.txt', '*.rst', '*.yaml'],
       'LCDisplay': ['*','*.txt', '*.rst', '*.yaml']},
       #packages=['cbpi4-LCDisplay'],
-      install_requires=[
-      'cbpi4>=4.1.10.rc2'
-      ],
+      #install_requires=[
+      #'cbpi4>=4.1.10.rc2'
+      #],
       long_description=long_description,
       long_description_content_type='text/markdown'
      )
