@@ -71,6 +71,17 @@ rightarrow = (
     0b00000,
     0b00000
 )
+
+start = (
+    0b10000,
+    0b10100,
+    0b10010,
+    0b10001,
+    0b10010,
+    0b10100,
+    0b10000,
+    0b00000
+)
 class LCDisplay(CBPiExtension):
     def __init__(self, cbpi):
         self.cbpi = cbpi
@@ -102,6 +113,7 @@ class LCDisplay(CBPiExtension):
             lcd.create_char(0, bierkrug)    # u"\x00"  -->beerglass symbol
             lcd.create_char(1, cool)        # u"\x01"  -->Ice symbol
             lcd.create_char(2, rightarrow)  # u"\x02"  -->Rightarrow
+            lcd.create_char(3, start)       # u"\x03"  -->Start symbol
         except Exception as e:
             if DEBUG: logger.info('LCDisplay - Error: LCD object not set, wrong LCD address: {}'.format(e))
         pass
@@ -563,8 +575,11 @@ class LCDisplay(CBPiExtension):
                                     step_summary="Waiting   "
                                 if step_summary.find("Ramping") != -1:
                                     step_summary="Ramping   "
-                                if step_summary.find("ECD:") != -1:
-                                    step_summary = step_summary.replace("EDC:", u"\x02 ")
+                                if step_summary.find("ECT:") != -1:
+                                    step_summary = step_summary.replace("ECT:", u"\x02")
+                                if step_summary.find("Started:") != -1:
+                                    step_summary = step_summary.replace("Started:", u"\x03")
+
                             except:
                                 pass
                     try:
