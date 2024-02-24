@@ -245,6 +245,15 @@ class LCDisplay(CBPiExtension):
             heater_state = False
 
         step_state = str(activity['state_text'])
+        
+        try:
+            if step_state.find("ECT:") != -1:
+                step_state = step_state.replace("ECT:", u"\x02")
+            if step_state.find("Started:") != -1:
+                step_state = step_state.replace("Started:", u"\x03")
+        except:
+            pass
+
         try:
             if (sensor_ID is not None) and sensor_ID != "":
                 sensor_value = self.cbpi.sensor.get_sensor_value(sensor_ID).get('value')
@@ -575,11 +584,6 @@ class LCDisplay(CBPiExtension):
                                     step_summary="Waiting   "
                                 if step_summary.find("Ramping") != -1:
                                     step_summary="Ramping   "
-                                if step_summary.find("ECT:") != -1:
-                                    step_summary = step_summary.replace("ECT:", u"\x02")
-                                if step_summary.find("Started:") != -1:
-                                    step_summary = step_summary.replace("Started:", u"\x03")
-
                             except:
                                 pass
                     try:
