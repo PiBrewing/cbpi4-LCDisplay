@@ -61,6 +61,16 @@ cool = (
     0b00000
 )
 
+rightarrow = (
+    0b00000,
+    0b00100,
+    0b00010,
+    0b11111,
+    0b00010,
+    0b00100,
+    0b01000,
+    0b00000
+)
 class LCDisplay(CBPiExtension):
     def __init__(self, cbpi):
         self.cbpi = cbpi
@@ -91,6 +101,7 @@ class LCDisplay(CBPiExtension):
                       auto_linebreaks=True, backlight_enabled=True)
             lcd.create_char(0, bierkrug)    # u"\x00"  -->beerglass symbol
             lcd.create_char(1, cool)        # u"\x01"  -->Ice symbol
+            lcd.create_char(2, rightarrow)  # u"\x02"  -->Rightarrow
         except Exception as e:
             if DEBUG: logger.info('LCDisplay - Error: LCD object not set, wrong LCD address: {}'.format(e))
         pass
@@ -275,7 +286,7 @@ class LCDisplay(CBPiExtension):
         lcd.write_string(lines[0])
         if status == 1:
             lcd.cursor_pos = (0, 18)
-            lcd.write_string(u" \x00")
+            lcd.write_string(u" \x02")
         if status == 2:
             lcd.cursor_pos = (0, 18)
             lcd.write_string(u" \x01")
