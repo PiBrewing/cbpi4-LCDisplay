@@ -195,7 +195,7 @@ class LCDisplay(CBPiExtension):
         stepname=fermenter['step_name'] if fermenter['step_name'] is not None else "Step"
         length_summary=len(fermenter['step_summary'])
         length_summary = 8 if length_summary > 8 else length_summary
-        lines[2] = ((stepname[:11]+"|").ljust(20-length_summary)+fermenter['step_summary']).ljust(20)[:20]
+        lines[2] = ((stepname[:11]+u"\x02").ljust(20-length_summary)+fermenter['step_summary']).ljust(20)[:20]
         target_temp = fermenter['target_temp']
         sensor_value = fermenter['sensor_value']
         if sensor_value == None:
