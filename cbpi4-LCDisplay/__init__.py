@@ -37,6 +37,7 @@ import os, re
 logger = logging.getLogger(__name__)
 DEBUG = True  # turn True to show (much) more debug info in app.log
 BLINK = False  # start value for blinking the beerglass during heating only for single mode
+LCD_ERROR = False # Will be set to true if LCD cannot be initialized 
 global lcd
 # beerglass symbol
 bierkrug = (
@@ -115,7 +116,8 @@ class LCDisplay(CBPiExtension):
             lcd.create_char(2, rightarrow)  # u"\x02"  -->Rightarrow
             lcd.create_char(3, start)       # u"\x03"  -->Start symbol
         except Exception as e:
-            if DEBUG: logger.info('LCDisplay - Error: LCD object not set, wrong LCD address: {}'.format(e))
+            logger.error('LCDisplay - Error: LCD object not set, wrong LCD address: {}'.format(e))
+            LCD_ERROR = True
         pass
 
 
@@ -129,24 +131,26 @@ class LCDisplay(CBPiExtension):
         line_setting = 1
 
         while True:
-            fermenters = await self.get_active_fermenter()
-#            logger.info(fermenters)
-            # this is the main code repeated constantly
-            activity, name = await self.get_activity()
-            if activity is None and len(fermenters) == 0:
-                await self.show_standby()
-            elif activity is None and len(fermenters) != 0:
-                if counter > (len(fermenters)-1):
-                        counter = 0
-                        line_setting = -1*line_setting
-                await self.show_fermenters(fermenters, counter, refresh, line_setting)
-                counter +=1
+            if LCD_ERROR == False:
+                fermenters = await self.get_active_fermenter()
+    #            logger.info(fermenters)
+                # this is the main code repeated constantly
+                activity, name = await self.get_activity()
+                if activity is None and len(fermenters) == 0:
+                    await self.show_standby()
+                elif activity is None and len(fermenters) != 0:
+                    if counter > (len(fermenters)-1):
+                            counter = 0
+                            line_setting = -1*line_setting
+                    await self.show_fermenters(fermenters, counter, refresh, line_setting)
+                    counter +=1
+                else:
+    #                logging.info(activity)
+    #                logging.info(name)
+                    await self.show_activity(activity, name)
+    #            await asyncio.sleep(refresh)
             else:
-#                logging.info(activity)
-#                logging.info(name)
-                await self.show_activity(activity, name)
-#            await asyncio.sleep(refresh)
-        pass
+                await asyncio.sleep(refresh)
 
     async def get_activity(self):
         active_step = None
