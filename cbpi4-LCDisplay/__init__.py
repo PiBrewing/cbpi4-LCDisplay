@@ -37,7 +37,7 @@ import os, re
 logger = logging.getLogger(__name__)
 DEBUG = True  # turn True to show (much) more debug info in app.log
 BLINK = False  # start value for blinking the beerglass during heating only for single mode
-LCD_ERROR = False # Will be set to true if LCD cannot be initialized 
+
 global lcd
 # beerglass symbol
 bierkrug = (
@@ -115,6 +115,7 @@ class LCDisplay(CBPiExtension):
             lcd.create_char(1, cool)        # u"\x01"  -->Ice symbol
             lcd.create_char(2, rightarrow)  # u"\x02"  -->Rightarrow
             lcd.create_char(3, start)       # u"\x03"  -->Start symbol
+            LCD_ERROR = False # Will be set to true if LCD cannot be initialized 
         except Exception as e:
             logger.error('LCDisplay - Error: LCD object not set, wrong LCD address: {}'.format(e))
             LCD_ERROR = True
