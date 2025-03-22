@@ -93,9 +93,9 @@ class LCDisplay(CBPiExtension):
         self._task = asyncio.create_task(self.run())
 
     async def run(self):
-        plugin = await self.cbpi.plugin.load_plugin_list("cbpi4-LCDisplay")
+        plugin = await self.cbpi.plugin.load_plugin_list("cbpi4-LCD")
         self.version=plugin[0].get("Version","0.0.0")
-        self.name=plugin[0].get("Name","cbpi4-LCDisplay")
+        self.name=plugin[0].get("Name","cbpi4-LCD")
 
         self.LCDisplay_update = self.cbpi.config.get(self.name+"_update", None)
 
