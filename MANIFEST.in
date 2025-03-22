@@ -1,2 +1,1 @@
 include cbpi4-LCD/config.yaml
-recursive-include cbpi4-LCD/static *
