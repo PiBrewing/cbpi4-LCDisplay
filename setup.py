@@ -20,7 +20,7 @@ setup(name='cbpi4-LCD',
       package_data={
         # If any package contains *.txt or *.rst files, include them:
       '': ['*.txt', '*.rst', '*.yaml'],
-      'LCDisplay': ['*','*.txt', '*.rst', '*.yaml']},
+      'cbpi4-LCD': ['*','*.txt', '*.rst', '*.yaml']},
       packages=['cbpi4-LCD'],
       install_requires=[
       'RPLCD',
