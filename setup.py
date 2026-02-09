@@ -8,7 +8,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='cbpi4-LCD',
-      version='0.1.1',
+      version='0.1.2.a1',
       description='CraftBeerPi4 LCD Plugin',
       author='Alexander Vollkopf',
       author_email='avollkopf@web.de',
